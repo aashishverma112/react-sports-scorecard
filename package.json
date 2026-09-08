@@ -1,0 +1,53 @@
+{
+  "name": "react-sports-scorecard",
+  "version": "1.0.0",
+  "description": "Hyper-optimized real-time cricket scorecard UI component library for React",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "main": "./dist/react-sports-scorecard.umd.cjs",
+  "module": "./dist/react-sports-scorecard.js",
+  "exports": {
+    ".": {
+      "import": "./dist/react-sports-scorecard.js",
+      "require": "./dist/react-sports-scorecard.umd.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "scripts": {
+  "dev": "vite",
+  "build": "vite build && tsc -p tsconfig.build.json",
+  "build:demo": "vite build --config vite.config.demo.ts",
+  "test": "vitest run"
+},
+  "keywords": [
+    "react",
+    "cricket",
+    "sports",
+    "ui-kit",
+    "realtime",
+    "websocket",
+    "live-score",
+    "scoreboard"
+  ],
+  "author": "Ashi",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "autoprefixer": "^10.5.5",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
+    "vitest": "^5.0.0"
+  }
+}
