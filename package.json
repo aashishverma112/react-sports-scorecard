@@ -1,6 +1,6 @@
 {
   "name": "react-sports-scorecard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Hyper-optimized real-time cricket scorecard UI component library for React",
   "type": "module",
   "engines": {
