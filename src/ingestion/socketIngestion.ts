@@ -1,6 +1,9 @@
 // src/ingestion/socketIngestion.ts
 import type { ScorecardStore, VolatileState } from '../store/scorecardStore';
 
+// Standard cricket rule: an innings ends once 10 wickets have fallen.
+export const MAX_WICKETS = 10;
+
 export interface BallPayload {
   runs?: number;
   isWicket?: boolean;
@@ -14,7 +17,7 @@ export interface OverCompletePayload {
 
 export interface WebSocketPacket {
   id?: string;
-  type: 'BALL_BOWLED' | 'OVER_COMPLETE' | string;
+  type: 'BALL_BOWLED' | 'OVER_COMPLETE' | 'START_SECOND_INNINGS' | string;
   payload?: BallPayload & OverCompletePayload;
 }
 
@@ -69,10 +72,11 @@ export class ScorecardIngestion {
     }
 
     const currentState = this.store.getState();
+    const oversLimit = currentState.metadata.oversLimit ?? null;
 
     const nextVolatileState = this.buffer.reduce<VolatileState>((acc, packet) => {
       try {
-        return this.translateEvent(acc, packet);
+        return this.translateEvent(acc, packet, oversLimit);
       } catch (err) {
         console.error("Failed to translate packet:", packet, err);
         return acc;
@@ -85,7 +89,37 @@ export class ScorecardIngestion {
     this.isFlushing = false;
   };
 
-  private translateEvent(volatileState: VolatileState, packet: WebSocketPacket): VolatileState {
+  private translateEvent(volatileState: VolatileState, packet: WebSocketPacket, oversLimit: number | null): VolatileState {
+    // Starting the second innings is the one valid transition out of a
+    // completed innings — handle it before the completion guard below.
+    // Only valid once, right after the first innings ends; ignored if
+    // we're not in that exact state (already in innings 2, duplicate
+    // packet, or the first innings isn't actually over yet).
+    if (packet.type === 'START_SECOND_INNINGS') {
+      if (volatileState.innings !== 1 || !volatileState.inningsComplete) {
+        return volatileState;
+      }
+      return {
+        score: 0,
+        wickets: 0,
+        overs: 0,
+        currentOverTimeline: [],
+        inningsComplete: false,
+        inningsCompleteReason: null,
+        innings: 2,
+        // The chasing team needs one more run than the first innings scored.
+        target: volatileState.score + 1,
+      };
+    }
+
+    // Once the innings is marked complete, ignore all further packets.
+    // Protects against a real feed that keeps sending events after the
+    // 10th wicket, the overs limit, or the target — late or duplicate
+    // packets can't reopen a finished innings or match.
+    if (volatileState.inningsComplete) {
+      return volatileState;
+    }
+
     switch (packet.type) {
       case 'BALL_BOWLED': {
         const { runs, isWicket, extras, ballText } = packet.payload || {};
@@ -94,23 +128,47 @@ export class ScorecardIngestion {
         const extraRuns = extras?.runs || 0;
         
         const newScore = volatileState.score + runVal + extraRuns;
-        const newWickets = isWicket ? volatileState.wickets + 1 : volatileState.wickets;
+        const newWicketsRaw = isWicket ? volatileState.wickets + 1 : volatileState.wickets;
         const updatedTimeline = ballText ? [...volatileState.currentOverTimeline, ballText] : volatileState.currentOverTimeline;
+
+        const isAllOut = newWicketsRaw >= MAX_WICKETS;
+        // In the second innings, reaching the target ends the match right
+        // away — even mid-over — unlike all_out/overs_completed, which can
+        // only be detected at their natural boundaries.
+        const isTargetReached =
+          volatileState.innings === 2 && volatileState.target != null && newScore >= volatileState.target;
+
+        const isComplete = isAllOut || isTargetReached;
+        const reason: VolatileState['inningsCompleteReason'] = isTargetReached
+          ? 'target_reached'
+          : isAllOut
+          ? 'all_out'
+          : volatileState.inningsCompleteReason;
 
         return {
           ...volatileState,
           score: newScore,
-          wickets: newWickets,
+          // Cap the displayed count at 10 even if a feed somehow sends
+          // more wicket events than a real innings allows.
+          wickets: Math.min(newWicketsRaw, MAX_WICKETS),
           currentOverTimeline: updatedTimeline,
+          inningsComplete: isComplete,
+          inningsCompleteReason: reason,
         };
       }
       
       case 'OVER_COMPLETE': {
         const newOverCount = packet.payload?.newOverCount ?? volatileState.overs;
+        const isOversLimitReached = oversLimit != null && newOverCount >= oversLimit;
+
         return {
           ...volatileState,
-          overs: newOverCount,
+          // Never display more than the configured overs limit, even if
+          // the feed sends one extra OVER_COMPLETE past the limit.
+          overs: isOversLimitReached ? oversLimit! : newOverCount,
           currentOverTimeline: [], 
+          inningsComplete: isOversLimitReached,
+          inningsCompleteReason: isOversLimitReached ? 'overs_completed' : volatileState.inningsCompleteReason,
         };
       }
 

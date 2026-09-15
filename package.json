@@ -23,11 +23,11 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "scripts": {
-  "dev": "vite",
-  "build": "vite build && tsc -p tsconfig.build.json",
-  "build:demo": "vite build --config vite.config.demo.ts",
-  "test": "vitest run"
-},
+    "dev": "vite",
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "build:demo": "vite build --config vite.config.demo.ts",
+    "test": "vitest run"
+  },
   "keywords": [
     "react",
     "cricket",
@@ -45,9 +45,12 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "@tailwindcss/vite": "^4.3.3",
     "autoprefixer": "^10.5.5",
+    "lucide-react": "^0.462.0",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
+    "typescript": "^5.7.2",
     "vitest": "^5.0.0"
   }
 }
