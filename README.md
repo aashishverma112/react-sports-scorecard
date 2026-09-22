@@ -21,6 +21,10 @@ A hyper-optimized, real-time cricket scorecard UI component library for React, e
 - 🧱 **Error-Contained:** Wrapped in an internal error boundary — a rendering failure inside the widget won't crash your whole app.
 - 📦 **Strict TypeScript & ESM/UMD Support:** Built under strict modern compiler rules with zero bloat.
 
+Engineering deep dive
+
+Curious about the actual design decisions — the batching/dedup race condition, a store bug that only showed up under real re-render load, and how the target-chase logic ends a match mid-over? See ENGINEERING.md.
+
 ## Installation
 
 ```bash
